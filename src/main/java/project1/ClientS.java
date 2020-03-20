@@ -229,10 +229,10 @@ public class ClientS {
                         .parseInt(line.substring(line.indexOf("Content-Length: ") + "Content-Length: ".length()));
             } else if (line.indexOf("Content-Type: ") != -1) {
                 contentType = line.substring(line.indexOf("Content-Type: ") + "Content-Type: ".length());
-                System.out.println(contentType);
             }
             // HTTP request ends with a blank line. If the response has a body, it will be
             // after the blank line.
+            System.out.println(line);
             if (line.equals("")) {
                 break;
             }
@@ -241,12 +241,14 @@ public class ClientS {
         if (contentType.contains("html")) {
             this.handleHTMLGetRequest(domain, reader, contentLength);
         } else if (contentType.contains("image")) {
-            // while ((line = reader.readLine()) != null) {
-            // System.out.println(line);
-            // }
-            BufferedImage img = ImageIO.read(inputStream);
-            File outputfile = new File("image" + (Math.round(Math.random() * 10)) + ".jpeg");
-            ImageIO.write(img, "jpeg", outputfile);
+            String fileName = path.substring(path.lastIndexOf("/") + 1);
+            FileOutputStream out = new FileOutputStream(fileName);
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            out.close();
         }
         client.close();
     }
