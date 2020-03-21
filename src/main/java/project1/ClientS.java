@@ -29,16 +29,16 @@ public class ClientS {
 
         ClientS client = new ClientS(80);
         // client.head();
-        try {
-            client.get(domain, "/index.html");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         // try {
-        // client.post(domain, "/post");
+        // client.get(domain);
         // } catch (IOException e) {
         // e.printStackTrace();
         // }
+        try {
+            client.put(domain, "/post", "test123");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void execute(String input) throws UnknownHostException, IOException {
@@ -58,30 +58,11 @@ public class ClientS {
                 case "HEAD":
                     this.head(uri);
                 case "POST":
-                    this.post(uri, "/", command, output);
+                    this.post(uri, "/", output);
                 case "PUT":
-                    this.post(uri, "/", command, output);
+                    this.put(uri, "/", output);
             }
         }
-    }
-
-    public void head(String domain) throws UnknownHostException, IOException {
-        System.out.println("Connecting to " + domain + " on port " + port);
-        Socket client = new Socket(domain, port);
-        System.out.println("Just connected to " + client.getRemoteSocketAddress());
-
-        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
-
-        writer.println("GET / HTTP/1.1");
-        writer.println("Host: " + domain);
-        writer.println("User-Agent: Computer Networks Client");
-        writer.println("Connection: close"); // Close connection after we are done with it.
-        writer.println();
-
-        InputStream inputStream = client.getInputStream();
-
-        new Headers(inputStream);
-        client.close();
     }
 
     /**
@@ -128,9 +109,10 @@ public class ClientS {
         } else {
             filePath = this.outputPath + path;
         }
-        File myObj = new File(filePath);
-        if (myObj.createNewFile()) {
-            System.out.println("File created: " + myObj.getName());
+        File file = new File(filePath);
+        file.getParentFile().mkdirs();
+        if (file.createNewFile()) {
+            System.out.println("File created: " + file.getName());
         } else {
             System.out.println("File already exists.");
         }
@@ -156,19 +138,6 @@ public class ClientS {
             html = this.handleContentLengthHTMLBody(reader, contentLength);
         }
 
-        // Chunks the html in sizable parts to translate.
-        List<String> smallHtmlParts = HTMLChunker.chunkHTML(html, 8000);
-
-        // Translate
-        // String originalLan = Translator.fromLanguage(html);
-        // String translatedHtml = "";
-        // for (String htmlPart : smallHtmlParts) {
-        // translatedHtml += Translator.translateHTML(htmlPart, originalLan, "ru");
-        // }
-        // this.writeToHTMLFile(translatedHtml);
-        // \\
-        this.writeToHTMLFile(html, path);
-
         for (String url : ImageFinder.findImageTagSources(html)) {
             String imgDomain;
             String imgPath;
@@ -192,11 +161,27 @@ public class ClientS {
                 imgPath = "/" + url;
             }
             this.get(imgDomain, imgPath);
+            System.out.println("Image path: " + imgPath);
+            html = html.replace(url, imgPath.substring(1));
         }
+
+        // Chunks the html in sizable parts to translate.
+        List<String> smallHtmlParts = HTMLChunker.chunkHTML(html, 8000);
+
+        // Translate
+        // String originalLan = Translator.fromLanguage(html);
+        // String translatedHtml = "";
+        // for (String htmlPart : smallHtmlParts) {
+        // translatedHtml += Translator.translateHTML(htmlPart, originalLan, "ru");
+        // }
+        // this.writeToHTMLFile(translatedHtml);
+        // \\
+        this.writeToHTMLFile(html, path);
     }
 
     private void handleImageBody(String path, InputStream inputStream) throws IOException {
-        String fileName = this.outputPath + path.substring(path.lastIndexOf("/"));
+        String fileName = this.outputPath + path;
+        System.out.println((new File(fileName)).getParentFile().mkdirs());
         FileOutputStream out = new FileOutputStream(fileName);
         byte[] buffer = new byte[1024];
         int read;
@@ -204,6 +189,58 @@ public class ClientS {
             out.write(buffer, 0, read);
         }
         out.close();
+    }
+
+    private void handlePutAndPost(String domain, String path, PutPost type, String input) throws IOException {
+        System.out.println("Connecting to " + domain + " on port " + port);
+        Socket client = new Socket(domain, port);
+        System.out.println("Just connected to " + client.getRemoteSocketAddress());
+
+        String contentType = "text/plain; charset=UTF-8";
+
+        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
+        writer.println(type == PutPost.POST ? "POST " : "PUT " + path + " HTTP/1.1");
+        writer.println("Host: " + domain);
+        writer.println("Content-Type: " + contentType);
+        writer.println("Content-Length: " + input.getBytes().length);
+        // writer.println("Connection: close");
+        writer.println("");
+        writer.println(input);
+
+        InputStream inputStream = client.getInputStream();
+        Headers headers = new Headers(inputStream);
+        ContentTypes responseContentType = headers.getContentType();
+        int contentLength = headers.getContentLength();
+
+        if (responseContentType == ContentTypes.HTML) {
+            this.handleHTMLBody(domain, path, new BufferedReader(new InputStreamReader(inputStream)), contentLength);
+        }
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            System.out.println(line);
+        }
+        client.close();
+    }
+
+    public void head(String domain) throws UnknownHostException, IOException {
+        System.out.println("Connecting to " + domain + " on port " + port);
+        Socket client = new Socket(domain, port);
+        System.out.println("Just connected to " + client.getRemoteSocketAddress());
+
+        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
+
+        writer.println("GET / HTTP/1.1");
+        writer.println("Host: " + domain);
+        writer.println("User-Agent: Computer Networks Client");
+        writer.println("Connection: close"); // Close connection after we are done with it.
+        writer.println();
+
+        InputStream inputStream = client.getInputStream();
+
+        new Headers(inputStream);
+        client.close();
     }
 
     public void get(String domain) throws UnknownHostException, IOException {
@@ -237,36 +274,15 @@ public class ClientS {
         client.close();
     }
 
-    public void post(String domain, String path, String header, String input) throws UnknownHostException, IOException {
-        System.out.println("Connecting to " + domain + " on port " + port);
-        Socket client = new Socket(domain, port);
-        System.out.println("Just connected to " + client.getRemoteSocketAddress());
-
-        String contentType = "text/plain; charset=UTF-8";
-
-        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
-        writer.println(header + " " + path + " HTTP/1.1");
-        writer.println("Host: " + domain);
-        writer.println("Content-Type: " + contentType);
-        // writer.println("Connection: close");
-        writer.println("");
-        writer.println(input);
-
-        InputStream inputStream = client.getInputStream();
-        Headers headers = new Headers(inputStream);
-        ContentTypes responseContentType = headers.getContentType();
-        int contentLength = headers.getContentLength();
-
-        if (responseContentType == ContentTypes.HTML) {
-            this.handleHTMLBody(domain, path, new BufferedReader(new InputStreamReader(inputStream)), contentLength);
-        }
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println(line);
-        }
-        client.close();
+    public void put(String domain, String path, String input) throws UnknownHostException, IOException {
+        this.handlePutAndPost(domain, path, PutPost.PUT, input);
     }
 
+    public void post(String domain, String path, String input) throws UnknownHostException, IOException {
+        this.handlePutAndPost(domain, path, PutPost.POST, input);
+    }
+}
+
+enum PutPost {
+    PUT, POST
 }

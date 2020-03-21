@@ -37,7 +37,7 @@ class Headers {
             }
 
             headersString += currentChar;
-            System.out.print(currentChar);
+            // System.out.print(currentChar);
         }
 
         return headersString;
