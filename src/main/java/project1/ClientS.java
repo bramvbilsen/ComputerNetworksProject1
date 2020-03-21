@@ -33,7 +33,7 @@ public class ClientS {
         // e.printStackTrace();
         // }
         try {
-            client.post(domain, "/test.txt", "456");
+            client.post(domain, "/test2.txt", "NOICE");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -53,12 +53,16 @@ public class ClientS {
             switch (command) {
                 case "GET":
                     this.get(uri);
+                    break;
                 case "HEAD":
                     this.head(uri);
+                    break;
                 case "POST":
                     this.post(uri, "/", output);
+                    break;
                 case "PUT":
                     this.put(uri, "/", output);
+                    break;
             }
         }
     }
@@ -197,7 +201,7 @@ public class ClientS {
 
         OutputStream outputStream = client.getOutputStream();
         PrintWriter writer = new PrintWriter(outputStream, true);
-        writer.println(type == PutPost.POST ? "POST " : "PUT " + path + " HTTP/1.1");
+        writer.println((type == PutPost.POST ? "POST " : "PUT ") + path + " HTTP/1.1");
         writer.println("Host: " + domain);
         writer.println("Content-Type: " + contentType);
         writer.println("Content-Length: " + input.getBytes().length);

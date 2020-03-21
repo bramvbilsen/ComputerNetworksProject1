@@ -84,6 +84,38 @@ public class ServerS extends Thread {
         System.out.println("Successfully wrote to the file.");
     }
 
+    private boolean handleProtectedFileChange(String path, PrintWriter writer, OutputStream outputStream)
+            throws IOException {
+        if (Arrays.equals(path.getBytes(), "/index.html".getBytes())
+                || Arrays.equals(path.getBytes(), "/unicorn.png".getBytes())) {
+            writer.println("HTTP/1.1 403 Forbidden");
+            String html = "<!DOCTYPE html><html><h1>403: Forbidden to overwrite this file.</h1></html>";
+            byte[] htmlBytesArray = html.getBytes();
+            writer.println("Content-Type: text/html; charset=UTF-8");
+            writer.println("Content-Length: " + htmlBytesArray.length);
+            writer.println("Content-Disposition: inline;filename=\"error404.html\"");
+            writer.println(""); // Mark the end of the headers.
+            for (int i = 0; i < htmlBytesArray.length; i++) {
+                outputStream.write(htmlBytesArray[i]);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void handleFileWriteError(PrintWriter writer, OutputStream outputStream) throws IOException {
+        writer.println("HTTP/1.1 500 Internal Server Error");
+        String html = "<!DOCTYPE html><html><h1>500: Internal server error.</h1></html>";
+        byte[] htmlBytesArray = html.getBytes();
+        writer.println("Content-Type: text/html; charset=UTF-8");
+        writer.println("Content-Length: " + htmlBytesArray.length);
+        writer.println("Content-Disposition: inline;filename=\"error500.html\"");
+        writer.println(""); // Mark the end of the headers.
+        for (int i = 0; i < htmlBytesArray.length; i++) {
+            outputStream.write(htmlBytesArray[i]);
+        }
+    }
+
     /**
      * 
      * @param headers
@@ -144,18 +176,7 @@ public class ServerS extends Thread {
         PrintWriter writer = new PrintWriter(outputStream, true);
 
         String path = headers.getDomainPath();
-        if (Arrays.equals(path.getBytes(), "/index.html".getBytes())
-                || Arrays.equals(path.getBytes(), "/unicorn.png".getBytes())) {
-            writer.println("HTTP/1.1 403 Forbidden");
-            String html = "<!DOCTYPE html><html><h1>403: Forbidden to overwrite this file.</h1></html>";
-            byte[] htmlBytesArray = html.getBytes();
-            writer.println("Content-Type: text/html; charset=UTF-8");
-            writer.println("Content-Length: " + htmlBytesArray.length);
-            writer.println("Content-Disposition: inline;filename=\"error404.html\"");
-            writer.println(""); // Mark the end of the headers.
-            for (int i = 0; i < htmlBytesArray.length; i++) {
-                outputStream.write(htmlBytesArray[i]);
-            }
+        if (handleProtectedFileChange(path, writer, outputStream)) {
             return;
         }
 
@@ -177,42 +198,21 @@ public class ServerS extends Thread {
                 outputStream.write(htmlBytesArray[i]);
             }
         } catch (IOException e) {
-            writer.println("HTTP/1.1 500 Internal Server Error");
-            String html = "<!DOCTYPE html><html><h1>500: Internal server error.</h1></html>";
-            byte[] htmlBytesArray = html.getBytes();
-            writer.println("Content-Type: text/html; charset=UTF-8");
-            writer.println("Content-Length: " + htmlBytesArray.length);
-            writer.println("Content-Disposition: inline;filename=\"error500.html\"");
-            writer.println(""); // Mark the end of the headers.
-            for (int i = 0; i < htmlBytesArray.length; i++) {
-                outputStream.write(htmlBytesArray[i]);
-            }
+            this.handleFileWriteError(writer, outputStream);
         }
     }
 
     public void post(Headers headers, InputStream inputStream, OutputStream outputStream) throws IOException {
-        PrintWriter writer = new PrintWriter(outputStream, true);
-
         String path = headers.getDomainPath();
         File file = new File(this.publicPath + path);
         if (!file.exists()) {
-            writer.close();
-            this.post(headers, inputStream, outputStream);
+            this.put(headers, inputStream, outputStream);
             return;
         }
 
-        if (Arrays.equals(path.getBytes(), "/index.html".getBytes())
-                || Arrays.equals(path.getBytes(), "/unicorn.png".getBytes())) {
-            writer.println("HTTP/1.1 403 Forbidden");
-            String html = "<!DOCTYPE html><html><h1>403: Forbidden to append this file.</h1></html>";
-            byte[] htmlBytesArray = html.getBytes();
-            writer.println("Content-Type: text/html; charset=UTF-8");
-            writer.println("Content-Length: " + htmlBytesArray.length);
-            writer.println("Content-Disposition: inline;filename=\"error404.html\"");
-            writer.println(""); // Mark the end of the headers.
-            for (int i = 0; i < htmlBytesArray.length; i++) {
-                outputStream.write(htmlBytesArray[i]);
-            }
+        PrintWriter writer = new PrintWriter(outputStream, true);
+
+        if (handleProtectedFileChange(path, writer, outputStream)) {
             return;
         }
 
@@ -226,7 +226,6 @@ public class ServerS extends Thread {
         while (myReader.hasNextLine()) {
             fileContent += myReader.nextLine();
         }
-        fileContent += '\n';
         myReader.close();
 
         try {
@@ -242,16 +241,7 @@ public class ServerS extends Thread {
                 outputStream.write(htmlBytesArray[i]);
             }
         } catch (IOException e) {
-            writer.println("HTTP/1.1 500 Internal Server Error");
-            String html = "<!DOCTYPE html><html><h1>500: Internal server error.</h1></html>";
-            byte[] htmlBytesArray = html.getBytes();
-            writer.println("Content-Type: text/html; charset=UTF-8");
-            writer.println("Content-Length: " + htmlBytesArray.length);
-            writer.println("Content-Disposition: inline;filename=\"error500.html\"");
-            writer.println(""); // Mark the end of the headers.
-            for (int i = 0; i < htmlBytesArray.length; i++) {
-                outputStream.write(htmlBytesArray[i]);
-            }
+            this.handleFileWriteError(writer, outputStream);
         }
     }
 }
