@@ -5,10 +5,9 @@ package project1;
 // File Name GreetingClient.java
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import javax.imageio.*;
 
-import java.awt.image.BufferedImage;
 import java.io.*;
 
 public class ClientS {
@@ -24,7 +23,7 @@ public class ClientS {
     public static void main(String[] args) {
         // String domain = "www.google.com";
         String domain = "www.bizrate.com";
-        // String domain = "s1.cnnx.io";
+        // String domain = "toledo.kuleuven.be";
 
         ClientS client = new ClientS(80);
         // client.head();
@@ -91,34 +90,23 @@ public class ClientS {
         }
     }
 
-    public void head() {
-        String serverName = "toledo.kuleuven.be";
-        System.out.println("Connecting to " + serverName + " on port " + port);
-        try (Socket client = new Socket(serverName, port)) {
-            System.out.println("Just connected to " + client.getRemoteSocketAddress());
+    public void head(String domain) throws UnknownHostException, IOException {
+        System.out.println("Connecting to " + domain + " on port " + port);
+        Socket client = new Socket(domain, port);
+        System.out.println("Just connected to " + client.getRemoteSocketAddress());
 
-            try (PrintWriter writer = new PrintWriter(client.getOutputStream(), true)) {
+        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
 
-                writer.println("HEAD / HTTP/1.1");
-                writer.println("Host: " + serverName);
-                writer.println("User-Agent: Console Http Client");
-                // writer.println("Accept: text/html");
-                writer.println("Accept-Language: en-US");
-                // Close connection after we are done with it.
-                writer.println("Connection: close");
-                writer.println();
+        writer.println("GET / HTTP/1.1");
+        writer.println("Host: " + domain);
+        writer.println("User-Agent: Computer Networks Client");
+        writer.println("Connection: close"); // Close connection after we are done with it.
+        writer.println();
 
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println(line);
-                    }
-                }
-            }
-            client.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        InputStream inputStream = client.getInputStream();
+
+        new Headers(inputStream);
+        client.close();
     }
 
     private void handleHTMLGetRequest(String domain, BufferedReader reader, int contentLength) throws IOException {
@@ -131,27 +119,8 @@ public class ClientS {
             html = this.handleContentLengthHTMLBody(reader, contentLength);
         }
 
-        List<String> smallHtmlParts = new ArrayList<>();
-
-        // Cut into chunks to translate
-        int maxCharCount = 8000;
-        int beginIndex = 0;
-        int index = 0;
-        int lastCloserIndex = 0;
-        while (index < html.length()) {
-            if (index - beginIndex > maxCharCount) {
-                smallHtmlParts.add(html.substring(beginIndex, lastCloserIndex + 1));
-                beginIndex = lastCloserIndex + 1;
-            }
-            if (html.charAt(index) == '>') {
-                lastCloserIndex = index;
-            }
-            index += 1;
-        }
-        if (beginIndex <= html.length()) {
-            smallHtmlParts.add(html.substring(beginIndex, html.length()));
-        }
-        // \\
+        // Chunks the html in sizable parts to translate.
+        List<String> smallHtmlParts = HTMLChunker.chunkHTML(html, 8000);
 
         // Translate
         // String originalLan = Translator.fromLanguage(html);
@@ -161,6 +130,7 @@ public class ClientS {
         // }
         // this.writeToHTMLFile(translatedHtml);
         // \\
+        this.writeToHTMLFile(html);
 
         for (String url : ImageFinder.findImageTagSources(html)) {
             String newDomain;
@@ -185,11 +155,15 @@ public class ClientS {
         }
     }
 
-    private void handleImageGetRequest(BufferedReader reader, int contentLength) throws IOException {
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println(line);
+    private void handleImageGetRequest(String path, InputStream inputStream) throws IOException {
+        String fileName = path.substring(path.lastIndexOf("/") + 1);
+        FileOutputStream out = new FileOutputStream(fileName);
+        byte[] buffer = new byte[1024];
+        int read;
+        while ((read = inputStream.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
         }
+        out.close();
     }
 
     public void get(String domain) throws UnknownHostException, IOException {
@@ -205,50 +179,20 @@ public class ClientS {
 
         writer.println("GET " + path + " HTTP/1.1");
         writer.println("Host: " + domain);
-        writer.println("User-Agent: Console Http Client");
+        writer.println("User-Agent: Computer Networks Client");
         writer.println("Connection: close"); // Close connection after we are done with it.
         writer.println();
 
-        // Raw byte stream
         InputStream inputStream = client.getInputStream();
 
-        // We use a bufferedReader because we would like to read lines, not individual
-        // chars.
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        Headers headers = new Headers(inputStream);
+        ContentTypes contentType = headers.getContentType();
+        int contentLength = headers.getContentLength();
 
-        String headers = "";
-        int contentLength = -1;
-        String contentType = "";
-
-        String line;
-        while ((line = reader.readLine()) != null) {
-            headers += line;
-            // Store the content length if there is any.
-            if (line.indexOf("Content-Length: ") != -1) {
-                contentLength = Integer
-                        .parseInt(line.substring(line.indexOf("Content-Length: ") + "Content-Length: ".length()));
-            } else if (line.indexOf("Content-Type: ") != -1) {
-                contentType = line.substring(line.indexOf("Content-Type: ") + "Content-Type: ".length());
-            }
-            // HTTP request ends with a blank line. If the response has a body, it will be
-            // after the blank line.
-            System.out.println(line);
-            if (line.equals("")) {
-                break;
-            }
-        }
-
-        if (contentType.contains("html")) {
-            this.handleHTMLGetRequest(domain, reader, contentLength);
-        } else if (contentType.contains("image")) {
-            String fileName = path.substring(path.lastIndexOf("/") + 1);
-            FileOutputStream out = new FileOutputStream(fileName);
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-            }
-            out.close();
+        if (contentType == ContentTypes.HTML) {
+            this.handleHTMLGetRequest(domain, new BufferedReader(new InputStreamReader(inputStream)), contentLength);
+        } else if (contentType == ContentTypes.IMAGE) {
+            this.handleImageGetRequest(path, inputStream);
         }
         client.close();
     }
