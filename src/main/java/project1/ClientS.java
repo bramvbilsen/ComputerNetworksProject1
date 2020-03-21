@@ -12,7 +12,7 @@ import java.io.*;
 
 public class ClientS {
 
-    final String outputPath = "./output";
+    final String outputPath = "output";
 
     public ClientS(int port) {
         this.port = port;
@@ -22,16 +22,66 @@ public class ClientS {
 
     public static void main(String[] args) {
         // String domain = "www.google.com";
-        String domain = "www.bizrate.com";
+        // String domain = "www.bizrate.com";
         // String domain = "toledo.kuleuven.be";
+        // String domain = "httpbin.org";
+        String domain = "localhost";
 
         ClientS client = new ClientS(80);
         // client.head();
         try {
-            client.get(domain);
+            client.get(domain, "/index.html");
         } catch (IOException e) {
             e.printStackTrace();
         }
+        // try {
+        // client.post(domain, "/post");
+        // } catch (IOException e) {
+        // e.printStackTrace();
+        // }
+    }
+
+    public void execute(String input) throws UnknownHostException, IOException {
+        String[] splittedInput = input.split(" ");
+        if (splittedInput.length == 4 || splittedInput.length == 5) {
+            String command = splittedInput[0];
+            String uri = splittedInput[1];
+            this.port = Integer.parseInt(splittedInput[2]);
+            String language = splittedInput[3];
+            String output = "";
+            if (splittedInput.length == 5) {
+                output = splittedInput[4];
+            }
+            switch (command) {
+                case "GET":
+                    this.get(uri);
+                case "HEAD":
+                    this.head(uri);
+                case "POST":
+                    this.post(uri, "/", command, output);
+                case "PUT":
+                    this.post(uri, "/", command, output);
+            }
+        }
+    }
+
+    public void head(String domain) throws UnknownHostException, IOException {
+        System.out.println("Connecting to " + domain + " on port " + port);
+        Socket client = new Socket(domain, port);
+        System.out.println("Just connected to " + client.getRemoteSocketAddress());
+
+        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
+
+        writer.println("GET / HTTP/1.1");
+        writer.println("Host: " + domain);
+        writer.println("User-Agent: Computer Networks Client");
+        writer.println("Connection: close"); // Close connection after we are done with it.
+        writer.println();
+
+        InputStream inputStream = client.getInputStream();
+
+        new Headers(inputStream);
+        client.close();
     }
 
     /**
@@ -71,8 +121,13 @@ public class ClientS {
         return body;
     }
 
-    private void writeToHTMLFile(String html) throws IOException {
-        String filePath = "test.html";
+    private void writeToHTMLFile(String html, String path) throws IOException {
+        String filePath;
+        if (path.charAt(0) == '/') {
+            filePath = this.outputPath + "/index.html";
+        } else {
+            filePath = this.outputPath + path;
+        }
         File myObj = new File(filePath);
         if (myObj.createNewFile()) {
             System.out.println("File created: " + myObj.getName());
@@ -90,26 +145,8 @@ public class ClientS {
         }
     }
 
-    public void head(String domain) throws UnknownHostException, IOException {
-        System.out.println("Connecting to " + domain + " on port " + port);
-        Socket client = new Socket(domain, port);
-        System.out.println("Just connected to " + client.getRemoteSocketAddress());
-
-        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
-
-        writer.println("GET / HTTP/1.1");
-        writer.println("Host: " + domain);
-        writer.println("User-Agent: Computer Networks Client");
-        writer.println("Connection: close"); // Close connection after we are done with it.
-        writer.println();
-
-        InputStream inputStream = client.getInputStream();
-
-        new Headers(inputStream);
-        client.close();
-    }
-
-    private void handleHTMLGetRequest(String domain, BufferedReader reader, int contentLength) throws IOException {
+    private void handleHTMLBody(String domain, String path, BufferedReader reader, int contentLength)
+            throws IOException {
         String html;
         if (contentLength == -1) {
             System.out.println("Chunked body");
@@ -130,33 +167,36 @@ public class ClientS {
         // }
         // this.writeToHTMLFile(translatedHtml);
         // \\
-        this.writeToHTMLFile(html);
+        this.writeToHTMLFile(html, path);
 
         for (String url : ImageFinder.findImageTagSources(html)) {
-            String newDomain;
-            String path;
+            String imgDomain;
+            String imgPath;
             if (url.startsWith("//")) {
-                newDomain = url.substring(2, url.length());
-                int domainPathSeperatorIndex = newDomain.indexOf("/");
-                path = newDomain.substring(domainPathSeperatorIndex, newDomain.length());
-                newDomain = newDomain.substring(0, domainPathSeperatorIndex);
+                imgDomain = url.substring(2, url.length());
+                int domainPathSeperatorIndex = imgDomain.indexOf("/");
+                imgPath = imgDomain.substring(domainPathSeperatorIndex, imgDomain.length());
+                imgDomain = imgDomain.substring(0, domainPathSeperatorIndex);
             } else if (url.startsWith("/")) {
-                newDomain = domain;
-                path = url;
+                imgDomain = domain;
+                imgPath = url;
             } else if (url.startsWith("http://")) {
-                newDomain = url.substring("http://".length(), url.length());
-                int domainPathSeperatorIndex = newDomain.indexOf("/");
-                path = newDomain.substring(domainPathSeperatorIndex, newDomain.length());
-                newDomain = newDomain.substring(0, domainPathSeperatorIndex);
+                imgDomain = url.substring("http://".length(), url.length());
+                int domainPathSeperatorIndex = imgDomain.indexOf("/");
+                imgPath = imgDomain.substring(domainPathSeperatorIndex, imgDomain.length());
+                imgDomain = imgDomain.substring(0, domainPathSeperatorIndex);
+            } else if (url.startsWith("https://")) {
+                continue;
             } else {
-                continue; // If for example the url starts with https, skip!
+                imgDomain = domain;
+                imgPath = "/" + url;
             }
-            this.get(newDomain, path);
+            this.get(imgDomain, imgPath);
         }
     }
 
-    private void handleImageGetRequest(String path, InputStream inputStream) throws IOException {
-        String fileName = path.substring(path.lastIndexOf("/") + 1);
+    private void handleImageBody(String path, InputStream inputStream) throws IOException {
+        String fileName = this.outputPath + path.substring(path.lastIndexOf("/"));
         FileOutputStream out = new FileOutputStream(fileName);
         byte[] buffer = new byte[1024];
         int read;
@@ -190,76 +230,43 @@ public class ClientS {
         int contentLength = headers.getContentLength();
 
         if (contentType == ContentTypes.HTML) {
-            this.handleHTMLGetRequest(domain, new BufferedReader(new InputStreamReader(inputStream)), contentLength);
+            this.handleHTMLBody(domain, path, new BufferedReader(new InputStreamReader(inputStream)), contentLength);
         } else if (contentType == ContentTypes.IMAGE) {
-            this.handleImageGetRequest(path, inputStream);
+            this.handleImageBody(path, inputStream);
         }
         client.close();
     }
 
-    public void post() {
-        String serverName = "www.google.com";
-        System.out.println("Connecting to " + serverName + " on port " + port);
-        try (Socket client = new Socket(serverName, port)) {
-            System.out.println("Just connected to " + client.getRemoteSocketAddress());
+    public void post(String domain, String path, String header, String input) throws UnknownHostException, IOException {
+        System.out.println("Connecting to " + domain + " on port " + port);
+        Socket client = new Socket(domain, port);
+        System.out.println("Just connected to " + client.getRemoteSocketAddress());
 
-            try (PrintWriter writer = new PrintWriter(client.getOutputStream(), true)) {
+        String contentType = "text/plain; charset=UTF-8";
 
-                writer.println("POST / HTTP/1.1");
-                writer.println("Host: " + serverName);
+        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
+        writer.println(header + " " + path + " HTTP/1.1");
+        writer.println("Host: " + domain);
+        writer.println("Content-Type: " + contentType);
+        // writer.println("Connection: close");
+        writer.println("");
+        writer.println(input);
 
-                String contentType = "nog implementeren";
-                int contentLength = 0;
+        InputStream inputStream = client.getInputStream();
+        Headers headers = new Headers(inputStream);
+        ContentTypes responseContentType = headers.getContentType();
+        int contentLength = headers.getContentLength();
 
-                writer.println("Content-Length: " + contentLength);
-                writer.println("Content-Type: " + contentType); // application/x-www-form-urlencoded
-                // writer.println("Accept: text/html");
-                // writer.println("Accept-Language: en-US");
-                // Close connection after we are done with it.
-                writer.println("Connection: close");
-                writer.println();
-
-                // try (BufferedReader reader = new BufferedReader(new
-                // InputStreamReader(client.getInputStream()))) {
-                // String line;
-                // while ((line = reader.readLine()) != null) {
-                // System.out.println(line);
-                // }
-                // }
-            }
-            client.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (responseContentType == ContentTypes.HTML) {
+            this.handleHTMLBody(domain, path, new BufferedReader(new InputStreamReader(inputStream)), contentLength);
         }
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            System.out.println(line);
+        }
+        client.close();
     }
 
-    public void put() {
-        String serverName = "www.google.com";
-        System.out.println("Connecting to " + serverName + " on port " + port);
-        try (Socket client = new Socket(serverName, port)) {
-            System.out.println("Just connected to " + client.getRemoteSocketAddress());
-
-            try (PrintWriter writer = new PrintWriter(client.getOutputStream(), true)) {
-
-                writer.println("HEAD / HTTP/1.1");
-                writer.println("Host: " + serverName);
-                writer.println("User-Agent: Console Http Client");
-                // writer.println("Accept: text/html");
-                // writer.println("Accept-Language: en-US");
-                // Close connection after we are done with it.
-                writer.println("Connection: close");
-                writer.println();
-
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println(line);
-                    }
-                }
-            }
-            client.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }

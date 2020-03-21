@@ -5,8 +5,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-enum ContentTypes {
-    HTML, IMAGE, UNKOWN
+enum RequestTypes {
+    GET, HEAD, PUT, POST
 }
 
 class Headers {
@@ -59,6 +59,8 @@ class Headers {
                 return ContentTypes.HTML;
             } else if (contentTypeCut.contains("image")) {
                 return ContentTypes.IMAGE;
+            } else if (contentTypeCut.contains("plain")) {
+                return ContentTypes.PLAIN_TEXT;
             }
         }
         return ContentTypes.UNKOWN;
@@ -80,5 +82,34 @@ class Headers {
             return Integer.parseInt(contentLengthCut);
         }
         return -1;
+    }
+
+    /**
+     * Only server side.
+     * 
+     * @return
+     */
+    public RequestTypes getRequestType() {
+        if (this.headers.startsWith("GET")) {
+            return RequestTypes.GET;
+        } else if (this.headers.startsWith("HEAD")) {
+            return RequestTypes.HEAD;
+        } else if (this.headers.startsWith("PUT")) {
+            return RequestTypes.PUT;
+        } else if (this.headers.startsWith("POST")) {
+            return RequestTypes.POST;
+        }
+        return null;
+    }
+
+    /**
+     * Only server side.
+     * 
+     * @return
+     */
+    public String getDomainPath() {
+        String firstHeaderLine = this.headers.substring(0, this.headers.indexOf('\r'));
+        String pathStartCut = firstHeaderLine.substring(firstHeaderLine.indexOf("/"));
+        return pathStartCut.substring(0, pathStartCut.indexOf(" ")).trim();
     }
 }
