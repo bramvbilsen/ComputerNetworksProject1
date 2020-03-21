@@ -4,8 +4,6 @@ package project1;
 
 // File Name GreetingClient.java
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import java.io.*;
@@ -35,7 +33,7 @@ public class ClientS {
         // e.printStackTrace();
         // }
         try {
-            client.put(domain, "/post", "test123");
+            client.post(domain, "/test.txt", "456");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -120,7 +118,6 @@ public class ClientS {
             FileWriter myWriter = new FileWriter(filePath);
             myWriter.write(html);
             myWriter.close();
-            System.out.println("Successfully wrote to the file.");
         } catch (IOException e) {
             System.out.println("An error occurred.");
             e.printStackTrace();
@@ -198,7 +195,8 @@ public class ClientS {
 
         String contentType = "text/plain; charset=UTF-8";
 
-        PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
+        OutputStream outputStream = client.getOutputStream();
+        PrintWriter writer = new PrintWriter(outputStream, true);
         writer.println(type == PutPost.POST ? "POST " : "PUT " + path + " HTTP/1.1");
         writer.println("Host: " + domain);
         writer.println("Content-Type: " + contentType);
