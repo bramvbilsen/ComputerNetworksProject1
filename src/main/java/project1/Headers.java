@@ -111,4 +111,8 @@ class Headers {
         String pathStartCut = firstHeaderLine.substring(firstHeaderLine.indexOf("/"));
         return pathStartCut.substring(0, pathStartCut.indexOf(" ")).trim();
     }
+
+    public boolean connectionShouldClose() {
+        return this.headers.indexOf("Connection: close") != -1;
+    }
 }

@@ -32,24 +32,27 @@ public class ServerS extends Thread {
                 InputStream inputStream = socket.getInputStream();
                 OutputStream outputStream = socket.getOutputStream();
 
-                Headers headers = new Headers(inputStream);
-                RequestTypes requestType = headers.getRequestType();
-                switch (requestType) {
-                    case GET:
-                        this.get(headers, outputStream);
-                        break;
-                    case HEAD:
-                        this.head(headers, outputStream);
-                        break;
-                    case POST:
-                        this.post(headers, inputStream, outputStream);
-                        break;
-                    case PUT:
-                        this.put(headers, inputStream, outputStream);
-                        break;
-                    default:
-                        break;
-                }
+                Headers headers;
+                do {
+                    headers = new Headers(inputStream);
+                    RequestTypes requestType = headers.getRequestType();
+                    switch (requestType) {
+                        case GET:
+                            this.get(headers, outputStream);
+                            break;
+                        case HEAD:
+                            this.head(headers, outputStream);
+                            break;
+                        case POST:
+                            this.post(headers, inputStream, outputStream);
+                            break;
+                        case PUT:
+                            this.put(headers, inputStream, outputStream);
+                            break;
+                        default:
+                            break;
+                    }
+                } while (!headers.connectionShouldClose());
                 socket.close();
             }
         } catch (IOException e) {
@@ -137,18 +140,19 @@ public class ServerS extends Thread {
         try {
             FileInputStream fileInputStream = new FileInputStream(file);
 
-            ArrayList<Integer> htmlBytes = new ArrayList<>();
+            ArrayList<Integer> fileBytes = new ArrayList<>();
             int fileByte;
             while ((fileByte = fileInputStream.read()) != -1) {
-                htmlBytes.add(fileByte);
+                fileBytes.add(fileByte);
             }
             fileInputStream.close();
             writer.println("HTTP/1.1 200 OK");
-            writer.println("Content-Length: " + htmlBytes.size());
+            writer.println("Content-Length: " + fileBytes.size());
             writer.println(this.contentTypeFromPath(filePath));
-            writer.println("Content-Disposition: inline;filename=\"index.html\"");
+            writer.println("Content-Disposition: inline;filename=\""
+                    + filePath.substring(filePath.lastIndexOf("/") + 1, filePath.length()) + "\"");
             writer.println(""); // Mark the end of the headers.
-            return htmlBytes;
+            return fileBytes;
         } catch (FileNotFoundException e) {
             writer.println("HTTP/1.1 404 Not Found");
             String html = "<!DOCTYPE html><html><h1>404: File not found.</h1></html>";
