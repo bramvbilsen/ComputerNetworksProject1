@@ -4,6 +4,7 @@ package project1;
 
 // File Name GreetingClient.java
 import java.net.*;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,21 +82,22 @@ public class ClientS {
 
         // String domain = "www.google.com";
         // String domain = "babytree.com";
-        // String domain = "diptera.myspecies.info";
         // String domain = "www.bizrate.com";
         // String domain = "toledo.kuleuven.be";
-        // String domain = "techofires.com";
         // String domain = "httpbin.org";
         // String domain = "localhost";
 
-        // // client.head();
+        // ClientS client = new ClientS(80, domain);
+        // String path = client.getPath(domain);
+
+        // client.head();
         // try {
-        // client.get(domain);
+        // client.get(domain, path, "en");
         // } catch (IOException e) {
         // e.printStackTrace();
         // }
         // try {
-        // client.post(domain, "/test2.txt", "Oef");
+        // client.post(domain, "/test2.txt", "Oef", "en");
         // } catch (IOException e) {
         // e.printStackTrace();
         // }
@@ -187,7 +189,7 @@ public class ClientS {
         file.getParentFile().mkdirs();
         file.createNewFile();
         try {
-            FileWriter myWriter = new FileWriter(filePath);
+            FileWriter myWriter = new FileWriter(filePath, Charset.forName("UTF-8"));
             myWriter.write(html);
             myWriter.close();
         } catch (IOException e) {
@@ -211,79 +213,43 @@ public class ClientS {
 
         System.out.println("\n\n\nHTML READ, SCANNING FOR EMBEDDED OBJECTS");
 
-        ArrayList<String> imgDomains = new ArrayList<>();
-        ArrayList<String> imgPaths = new ArrayList<>();
-        for (String url : ImageFinder.findImageTagSources(html)) {
-            String imgDomain;
-            String imgPath;
+        ArrayList<String> embeddedObjectDomains = new ArrayList<>();
+        ArrayList<String> embeddedObjectPaths = new ArrayList<>();
+        for (String url : EmbeddedObjectFinder.findEmbeddedObjects(html)) {
+            String embeddedObjectDomain;
+            String embeddedObjectPath;
             if (url.startsWith("//")) {
-                imgDomain = url.substring(2, url.length());
-                int domainPathSeperatorIndex = imgDomain.indexOf("/");
-                imgPath = imgDomain.substring(domainPathSeperatorIndex, imgDomain.length());
-                imgDomain = imgDomain.substring(0, domainPathSeperatorIndex);
+                embeddedObjectDomain = url.substring(2, url.length());
+                int domainPathSeperatorIndex = embeddedObjectDomain.indexOf("/");
+                embeddedObjectPath = embeddedObjectDomain.substring(domainPathSeperatorIndex,
+                        embeddedObjectDomain.length());
+                embeddedObjectDomain = embeddedObjectDomain.substring(0, domainPathSeperatorIndex);
             } else if (url.startsWith("/")) {
-                imgDomain = domain;
-                imgPath = url;
+                embeddedObjectDomain = domain;
+                embeddedObjectPath = url;
             } else if (url.startsWith("http://")) {
-                imgDomain = url.substring("http://".length(), url.length());
-                int domainPathSeperatorIndex = imgDomain.indexOf("/");
-                imgPath = imgDomain.substring(domainPathSeperatorIndex, imgDomain.length());
-                imgDomain = imgDomain.substring(0, domainPathSeperatorIndex);
+                embeddedObjectDomain = url.substring("http://".length(), url.length());
+                int domainPathSeperatorIndex = embeddedObjectDomain.indexOf("/");
+                embeddedObjectPath = embeddedObjectDomain.substring(domainPathSeperatorIndex,
+                        embeddedObjectDomain.length());
+                embeddedObjectDomain = embeddedObjectDomain.substring(0, domainPathSeperatorIndex);
             } else if (url.startsWith("https://")) {
                 continue;
             } else {
-                imgDomain = domain;
-                imgPath = "/" + url;
+                embeddedObjectDomain = domain;
+                embeddedObjectPath = "/" + url;
             }
-            imgDomains.add(imgDomain);
-            imgPaths.add(imgPath);
-            System.out.println("Image path: " + imgPath);
-            html = html.replace(url, imgPath.substring(1));
+            embeddedObjectDomains.add(embeddedObjectDomain);
+            embeddedObjectPaths.add(embeddedObjectPath);
+            html = html.replace(url, embeddedObjectPath.substring(1));
         }
-        for (int i = 0; i < imgDomains.size(); i++) {
-            if (imgDomains.get(i) != this.getDomain(this.uri)) {
+        for (int i = 0; i < embeddedObjectDomains.size(); i++) {
+            if (embeddedObjectDomains.get(i) != this.getDomain(this.uri)) {
                 System.out.println("File on other server, setting up connection...");
-                this.get(imgDomains.get(i), imgPaths.get(i), language);
+                this.get(embeddedObjectDomains.get(i), embeddedObjectPaths.get(i), language);
             } else {
                 System.out.println("Can re-use connection!");
-                this.handleGeneralGet(imgDomains.get(i), imgPaths.get(i), client, language);
-            }
-        }
-
-        ArrayList<String> styleDomains = new ArrayList<>();
-        ArrayList<String> stylePaths = new ArrayList<>();
-        for (String url : StylesFinder.findStylesTagSources(html)) {
-            String styleDomain;
-            String stylePath;
-            if (url.startsWith("//")) {
-                styleDomain = url.substring(2, url.length());
-                int domainPathSeperatorIndex = styleDomain.indexOf("/");
-                stylePath = styleDomain.substring(domainPathSeperatorIndex, styleDomain.length());
-                styleDomain = styleDomain.substring(0, domainPathSeperatorIndex);
-            } else if (url.startsWith("/")) {
-                styleDomain = domain;
-                stylePath = url;
-            } else if (url.startsWith("http://")) {
-                styleDomain = url.substring("http://".length(), url.length());
-                int domainPathSeperatorIndex = styleDomain.indexOf("/");
-                stylePath = styleDomain.substring(domainPathSeperatorIndex, styleDomain.length());
-                styleDomain = styleDomain.substring(0, domainPathSeperatorIndex);
-            } else if (url.startsWith("https://")) {
-                continue;
-            } else {
-                styleDomain = domain;
-                stylePath = "/" + url;
-            }
-            styleDomains.add(styleDomain);
-            stylePaths.add(stylePath);
-            System.out.println("Script path: " + stylePath);
-            html = html.replace(url, stylePath.substring(1));
-        }
-        for (int i = 0; i < styleDomains.size(); i++) {
-            if (styleDomains.get(i) != this.getDomain(this.uri)) {
-                this.get(styleDomains.get(i), stylePaths.get(i), language);
-            } else {
-                this.handleGeneralGet(styleDomains.get(i), stylePaths.get(i), client, language);
+                this.handleGeneralGet(embeddedObjectDomains.get(i), embeddedObjectPaths.get(i), client, language);
             }
         }
 
@@ -303,36 +269,31 @@ public class ClientS {
 
     private void handleFileBody(String path, Socket client, int contentLength) throws IOException {
         InputStream inputStream = client.getInputStream();
-        // inputStream.
         String fileName = this.outputPath + path;
         (new File(fileName)).getParentFile().mkdirs();
-        boolean didUpdate = true;
-        long lastUpdateTime = System.currentTimeMillis();
-        // while (inputStream.available() != contentLength || inputStream.read(b)) {
-        // long percentage = Math.round((((double) inputStream.available()) / ((double)
-        // contentLength)) * 100);
-        // if (didUpdate) {
-        // lastUpdateTime = System.currentTimeMillis();
-        // System.out.println("Downloading file: " + percentage + "%");
-        // }
-        // if (System.currentTimeMillis() - lastUpdateTime > 1000 * 10) {
-        // this.handleGeneralHead(this.getDomain(this.uri), path, false, client);
-        // System.out.println("PATH: " + path);
-        // System.out.println("END OF WAKE UP CALL");
-        // }
-        // didUpdate = percentage != Math.round((((double) inputStream.available()) /
-        // ((double) contentLength)) * 100);
-        // }
-        // System.out.println("Download completed!");
         FileOutputStream out = new FileOutputStream(fileName);
-        byte[] buffer = new byte[contentLength];
 
-        int test;
-        while ((test = inputStream.read()) != -1) {
-            out.write((byte) test);
+        byte[] buffer = new byte[8 * 1024];
+        int bytesRead;
+        int downloaded = 0;
+        while (downloaded < contentLength) {
+            bytesRead = inputStream.read(buffer);
+            out.write(buffer, 0, bytesRead);
+            downloaded += bytesRead;
+            System.out.println("Downloaded: " + downloaded + "/" + contentLength);
         }
-        out.write(buffer, 0, inputStream.read(buffer));
         out.close();
+    }
+
+    private void handleUnknownBody(Socket client, int contentLength) throws IOException {
+        InputStream inputStream = client.getInputStream();
+        byte[] buffer = new byte[8 * 1024];
+        int bytesRead;
+        int downloaded = 0;
+        while (downloaded < contentLength) {
+            bytesRead = inputStream.read(buffer);
+            downloaded += bytesRead;
+        }
     }
 
     private void handlePutAndPost(String domain, String path, PutPost type, String input, String language)
@@ -387,10 +348,11 @@ public class ClientS {
 
         if (contentType == ContentTypes.HTML) {
             this.handleHTMLBody(domain, path, client, contentLength, language);
-        } else if (contentType == ContentTypes.IMAGE || contentType == ContentTypes.SCRIPT) {
-            System.out.println("--------- Image headers: ");
-            System.out.println(headers.toString());
+        } else if (contentType == ContentTypes.IMAGE || contentType == ContentTypes.SCRIPT
+                || contentType == ContentTypes.STYLES) {
             this.handleFileBody(path, client, contentLength);
+        } else {
+            this.handleUnknownBody(client, contentLength);
         }
     }
 

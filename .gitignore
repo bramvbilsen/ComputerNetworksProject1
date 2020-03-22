@@ -200,3 +200,4 @@ recognizing-ignaz-semmelweis-and-handwashing-6753651837108746.2-l.png
 *.jpg
 *.html
 responseWebPage/*.txt
+output/**/*.css
