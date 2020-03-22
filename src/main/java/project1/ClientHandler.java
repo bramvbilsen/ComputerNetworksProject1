@@ -7,14 +7,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 
+/**
+ * Used by `ServerS` to handle client connections.
+ */
 class ClientHandler implements Runnable {
+    /**
+     * Socket used to communicate to the client.
+     */
     private Socket clientSocket;
+    /**
+     * Server path available to the public.
+     */
     private String publicPath = "responseWebPage";
 
     ClientHandler(Socket clientSocket) {
         this.clientSocket = clientSocket;
     }
 
+    @Override
     public void run() {
         try {
             InputStream inputStream = clientSocket.getInputStream();
@@ -49,6 +59,14 @@ class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Gets the content type header for the file at the provided path by looking at
+     * the file extension.
+     * 
+     * @param path Path of file
+     * @return Content type header for the file at the given path.
+     * @throws Exception If the file type is not supported.
+     */
     private String contentTypeFromPath(String path) throws Exception {
         if (path.endsWith(".html")) {
             return "Content-Type: text/html; charset=UTF-8";
@@ -66,6 +84,15 @@ class ClientHandler implements Runnable {
         throw new Exception("File type not supported");
     }
 
+    /**
+     * Writes the provided content to the provided file path.
+     * 
+     * @param filePath Path to the file.
+     * @param content  Text to be put into the file.
+     * @throws IOException if the named file exists but is a directory rather than a
+     *                     regular file, does not exist but cannot be created, or
+     *                     cannot be opened for any other reason
+     */
     private void writeToFile(String filePath, String content) throws IOException {
         filePath = this.publicPath + filePath;
         File file = new File(filePath);
@@ -77,10 +104,26 @@ class ClientHandler implements Runnable {
         System.out.println("Successfully wrote to the file.");
     }
 
+    /**
+     * Checks and handles a client trying to change a file that is protected. Will
+     * return a 404 to the client if a protected file was at the path. Otherwise
+     * won't talk to client.
+     * 
+     * @param path         Path to the file
+     * @param writer       PrintWriter to write the headers to the client's
+     *                     inputtream.
+     * @param outputStream Stream to write the html response to the client's
+     *                     inputstream.
+     * @return false if the path is not to a protected file, otherwise true.
+     * @throws IOException if an I/O error occurs. In particular, an IOException may
+     *                     be thrown if the output stream has been closed.
+     */
     private boolean handleProtectedFileChange(String path, PrintWriter writer, OutputStream outputStream)
             throws IOException {
         if (Arrays.equals(path.getBytes(), "/index.html".getBytes())
-                || Arrays.equals(path.getBytes(), "/unicorn.png".getBytes())) {
+                || Arrays.equals(path.getBytes(), "/unicorn.png".getBytes())
+                || Arrays.equals(path.getBytes(), "/index.css".getBytes())
+                || Arrays.equals(path.getBytes(), "/index.js".getBytes())) {
             writer.println("HTTP/1.1 403 Forbidden");
             String html = "<!DOCTYPE html><html><h1>403: Forbidden to overwrite this file.</h1></html>";
             byte[] htmlBytesArray = html.getBytes();
@@ -110,11 +153,13 @@ class ClientHandler implements Runnable {
     }
 
     /**
+     * Handles head request from client.
      * 
-     * @param headers
-     * @param bodyOutputStream
+     * @param headers      Headers from the client's request.
+     * @param outputStream Outputstream used to communicate with client.
      * @return The bytes that were read to figure out the content length.
-     * @throws Exception
+     * @throws Exception If the file type is not supported or if an I/O error
+     *                   occurs.
      */
     public ArrayList<Integer> head(Headers headers, OutputStream outputStream) throws Exception {
         String filePath = headers.getDomainPath();
@@ -159,6 +204,15 @@ class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Handles get request from client.
+     * 
+     * @param headers      Headers from the client's request.
+     * @param outputStream Outputstream used to communicate with client.
+     * @return The bytes that were read to figure out the content length.
+     * @throws Exception If the file type is not supported or if an I/O error
+     *                   occurs.
+     */
     public void get(Headers headers, OutputStream outputStream) throws Exception {
         ArrayList<Integer> htmlBytes = this.head(headers, outputStream);
         for (int i = 0; i < htmlBytes.size(); i++) {
@@ -166,6 +220,18 @@ class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Handles put request from client.
+     * 
+     * @param headers      Headers from the client's request.
+     * @param inputStream  Inputstream to read body of client's request.
+     * @param outputStream Outputstream used to communicate with client.
+     * @return The bytes that were read to figure out the content length.
+     * @throws IOException if the named file exists but is a directory rather than a
+     *                     regular file, does not exist but cannot be created, or
+     *                     cannot be opened for any other reason or in general when
+     *                     an I/O error occurs.
+     */
     public void put(Headers headers, InputStream inputStream, OutputStream outputStream) throws IOException {
         PrintWriter writer = new PrintWriter(outputStream, true);
 
@@ -196,6 +262,18 @@ class ClientHandler implements Runnable {
         }
     }
 
+    /**
+     * Handles post request from client.
+     * 
+     * @param headers      Headers from the client's request.
+     * @param inputStream  Inputstream to read body of client's request.
+     * @param outputStream Outputstream used to communicate with client.
+     * @return The bytes that were read to figure out the content length.
+     * @throws IOException if the named file exists but is a directory rather than a
+     *                     regular file, does not exist but cannot be created, or
+     *                     cannot be opened for any other reason or in general when
+     *                     an I/O error occurs.
+     */
     public void post(Headers headers, InputStream inputStream, OutputStream outputStream) throws IOException {
         String path = headers.getDomainPath();
         File file = new File(this.publicPath + path);

@@ -1,17 +1,19 @@
-// API KEY TRANSLATION TOOL (yandex): trnsl.1.1.20200320T105558Z.9cc4008c27db703b.31aa12119fd731774544f8da1a35002f6a7250d0
-
 package project1;
 
-// File Name GreetingClient.java
 import java.net.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-
 import java.io.*;
 
+/**
+ * Class for clients to send requests.
+ */
 public class ClientS {
 
+    /**
+     * Path in which to save data returned by server via requests.
+     */
     final String outputPath = "output";
 
     public ClientS(int port, String uri) {
@@ -103,6 +105,12 @@ public class ClientS {
         // }
     }
 
+    /**
+     * Gets the domain from the given uri.
+     * 
+     * @param uri uri to get the domain from.
+     * @return domain.
+     */
     public String getDomain(String uri) {
         String domain = uri;
         if (uri.startsWith("http://")) {
@@ -111,6 +119,12 @@ public class ClientS {
         return domain.substring(0, domain.indexOf("/") == -1 ? domain.length() : domain.indexOf("/"));
     }
 
+    /**
+     * Gets the path from the given uri.
+     * 
+     * @param uri uri to get the path from.
+     * @return path.
+     */
     public String getPath(String uri) {
         String path = uri;
         if (uri.startsWith("http://")) {
@@ -123,6 +137,14 @@ public class ClientS {
         }
     }
 
+    /**
+     * Reads in the next chunk's size from a given input stream.
+     * 
+     * @param inputStream inputstream with the chunk size with the beginning of the
+     *                    chunk size line at the start.
+     * @return size of the next chunk.
+     * @throws IOException if an I/O error occurs.
+     */
     private int readChunkSize(InputStream inputStream) throws IOException {
         String chunkSizeStr = "";
         // Chunk size ends with CRLF (\r\n). readLine handles this!
@@ -148,11 +170,11 @@ public class ClientS {
     }
 
     /**
-     * Return the body
+     * Reads in a chunked html body from a given inputstream.
      * 
-     * @param bodyReader
-     * @return
-     * @throws IOException
+     * @param bodyReader inputstream with the html body.
+     * @return an html string with all chunked parts.
+     * @throws IOException if an I/O error occurs.
      */
     private String handleChunckedHTMLBody(InputStream inputStream) throws IOException {
         String body = "";
@@ -168,6 +190,15 @@ public class ClientS {
         return body;
     }
 
+    /**
+     * Reads in an html string from the input stream with the provided content
+     * length.
+     * 
+     * @param inputStream   input stream to read the html from.
+     * @param contentLength number of bytes to read.
+     * @return the html string.
+     * @throws IOException if an I/O error occurs.
+     */
     private String handleContentLengthHTMLBody(InputStream inputStream, int contentLength) throws IOException {
         String body = "";
         for (int i = contentLength; i > 0; i--) {
@@ -178,6 +209,13 @@ public class ClientS {
         return body;
     }
 
+    /**
+     * Writes an html string to a file at the given path.
+     * 
+     * @param html html string to store.
+     * @param path path to store the html in.
+     * @throws IOException If an I/O error occurred
+     */
     private void writeToHTMLFile(String html, String path) throws IOException {
         String filePath;
         if (path.charAt(0) == '/') {
@@ -198,6 +236,17 @@ public class ClientS {
         }
     }
 
+    /**
+     * Handles an html body from a request and also searches for embedded objects
+     * and gets them.
+     * 
+     * @param domain        domain of the server to which the request was send.
+     * @param path          path of the server which was requested.
+     * @param client        socket to communicate with the server.
+     * @param contentLength length of the html body in bytes.
+     * @param language      language in which the html should be translated.
+     * @throws IOException If an I/O error occurred
+     */
     private void handleHTMLBody(String domain, String path, Socket client, int contentLength, String language)
             throws IOException {
         String html;
@@ -257,16 +306,27 @@ public class ClientS {
         List<String> smallHtmlParts = HTMLChunker.chunkHTML(html, 8000);
 
         // Translate
-        // String originalLan = Translator.fromLanguage(html);
-        // String translatedHtml = "";
-        // for (String htmlPart : smallHtmlParts) {
-        // translatedHtml += Translator.translateHTML(htmlPart, originalLan, language);
-        // }
-        // this.writeToHTMLFile(translatedHtml);
-        // \\
-        this.writeToHTMLFile(html, path);
+        String originalLan = Translator.fromLanguage(html);
+        String translatedHtml = "";
+        if (originalLan.toLowerCase().getBytes()[0] != language.toLowerCase().getBytes()[0]
+                && originalLan.toLowerCase().getBytes()[1] != language.toLowerCase().getBytes()[1]) {
+            for (String htmlPart : smallHtmlParts) {
+                translatedHtml += Translator.translateHTML(htmlPart, originalLan, language);
+            }
+        } else {
+            translatedHtml = html;
+        }
+        this.writeToHTMLFile(translatedHtml, path);
     }
 
+    /**
+     * Handles an file body from a request.
+     * 
+     * @param path          path of the file which was requested.
+     * @param client        socket to communicate with the server.
+     * @param contentLength length of the html body in bytes.
+     * @throws IOException If an I/O error occurred
+     */
     private void handleFileBody(String path, Socket client, int contentLength) throws IOException {
         InputStream inputStream = client.getInputStream();
         String fileName = this.outputPath + path;
@@ -285,6 +345,13 @@ public class ClientS {
         out.close();
     }
 
+    /**
+     * Handles bodies of unknown types.
+     * 
+     * @param client        socket to communicate with the server.
+     * @param contentLength length of the html body in bytes.
+     * @throws IOException If an I/O error occurred
+     */
     private void handleUnknownBody(Socket client, int contentLength) throws IOException {
         InputStream inputStream = client.getInputStream();
         byte[] buffer = new byte[8 * 1024];
@@ -296,6 +363,16 @@ public class ClientS {
         }
     }
 
+    /**
+     * Handles put and post requests.
+     * 
+     * @param domain        domain of the server to which the request was send.
+     * @param path          path of the server which was requested.
+     * @param type          whether this is a put or post request.
+     * @param contentLength length of the html body in bytes.
+     * @param language      language in which the html should be translated.
+     * @throws IOException If an I/O error occurred
+     */
     private void handlePutAndPost(String domain, String path, PutPost type, String input, String language)
             throws IOException {
         System.out.println("Connecting to " + domain + " on port " + port);
@@ -330,8 +407,17 @@ public class ClientS {
         client.close();
     }
 
-    private void handleGeneralGet(String domain, String path, Socket client, String language)
-            throws UnknownHostException, IOException {
+    /**
+     * Handles get requests.
+     * 
+     * @param domain        domain of the server to which the request was send.
+     * @param path          path of the server which was requested.
+     * @param client        socket to communicate with the server.
+     * @param contentLength length of the html body in bytes.
+     * @param language      language in which the html should be translated.
+     * @throws IOException If an I/O error occurred
+     */
+    private void handleGeneralGet(String domain, String path, Socket client, String language) throws IOException {
         PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
 
         writer.println("GET " + path + " HTTP/1.1");
@@ -356,6 +442,16 @@ public class ClientS {
         }
     }
 
+    /**
+     * Handles head requests.
+     * 
+     * @param domain      domain of the server to which the request was send.
+     * @param path        path of the server which was requested.
+     * @param shouldClose whether or not the connection should be closed after this
+     *                    request.
+     * @param client      socket to communicate with the server.
+     * @throws IOException If an I/O error occurred
+     */
     private void handleGeneralHead(String domain, String path, boolean shouldClose, Socket client) throws IOException {
         PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
 
@@ -372,10 +468,23 @@ public class ClientS {
         new Headers(inputStream);
     }
 
-    public void head(String domain) throws UnknownHostException, IOException {
+    /**
+     * Makes a head request to the provided domain.
+     * 
+     * @param domain domain to make head request to.
+     * @throws IOException If an I/O error occurred
+     */
+    public void head(String domain) throws IOException {
         this.head(domain, "/");
     }
 
+    /**
+     * Makes a head request to the provided domain at the given path.
+     * 
+     * @param domain domain to make head request to.
+     * @param path   path where the file is stored on the server.
+     * @throws IOException If an I/O error occurred
+     */
     public void head(String domain, String path) throws UnknownHostException, IOException {
         System.out.println("Connecting to " + domain + " on port " + port);
         Socket client = new Socket(domain, port);
@@ -383,10 +492,25 @@ public class ClientS {
         client.close();
     }
 
+    /**
+     * Makes a get request to the provided domain.
+     * 
+     * @param domain   domain to make get request to.
+     * @param language language in which to translate the response.
+     * @throws IOException If an I/O error occurred
+     */
     public void get(String domain, String language) throws UnknownHostException, IOException {
         this.get(domain, "/", language);
     }
 
+    /**
+     * Makes a get request to the provided domain at the given path.
+     * 
+     * @param domain   domain to make get request to.
+     * @param path     path where the file is stored on the server.
+     * @param language language in which to translate the response.
+     * @throws IOException If an I/O error occurred
+     */
     public void get(String domain, String path, String language) throws UnknownHostException, IOException {
         System.out.println("Connecting to " + domain + " on port " + port);
         Socket client = new Socket(domain, port);
@@ -395,17 +519,38 @@ public class ClientS {
         client.close();
     }
 
+    /**
+     * Makes a put request to the provided domain at the given path.
+     * 
+     * @param domain   domain to make put request to.
+     * @param path     path where the file should be stored on the server.
+     * @param input    data to write to the server.
+     * @param language language in which to translate the response.
+     * @throws IOException If an I/O error occurred
+     */
     public void put(String domain, String path, String input, String language)
             throws UnknownHostException, IOException {
         this.handlePutAndPost(domain, path, PutPost.PUT, input, language);
     }
 
+    /**
+     * Makes a post request to the provided domain at the given path.
+     * 
+     * @param domain   domain to make post request to.
+     * @param path     path where the file should be stored on the server.
+     * @param input    data to write to the server.
+     * @param language language in which to translate the response.
+     * @throws IOException If an I/O error occurred
+     */
     public void post(String domain, String path, String input, String language)
             throws UnknownHostException, IOException {
         this.handlePutAndPost(domain, path, PutPost.POST, input, language);
     }
 }
 
+/**
+ * PUT or POST
+ */
 enum PutPost {
     PUT, POST
 }

@@ -7,15 +7,19 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 
+/**
+ * Class used to translate html files.
+ */
 class Translator {
 
-    final static String translationAPIKey = "trnsl.1.1.20200320T105558Z.9cc4008c27db703b.31aa12119fd731774544f8da1a35002f6a7250d0";
+    final static String translationAPIKey = "trnsl.1.1.20200322T173021Z.c6375857a50aeb74.334de78295721356b62d50cf9b7119aed9ccf5b0";
 
     /**
      * Checks which language this page is in and returns that language abreviation.
+     * Defaults to "en".
      * 
-     * @param html
-     * @return
+     * @param html html string to determine language from.
+     * @return The language this html string is in.
      */
     public static String fromLanguage(String html) {
         String lanTagEntry = "lang=\"";
@@ -26,6 +30,15 @@ class Translator {
         return fromLanguage;
     }
 
+    /**
+     * Translates the provided html string from and to the given languages.
+     * 
+     * @param html         html string to translate.
+     * @param fromLanguage language in of the html string.
+     * @param toLanguage   language to convert the html string to.
+     * @return Translated html string.
+     * @throws IOException If something went wrong connecting with the Yandex API.
+     */
     public static String translateHTML(String html, String fromLanguage, String toLanguage) throws IOException {
         html = html.replaceAll("\n", "");
         html = html.replaceAll("\r", "");

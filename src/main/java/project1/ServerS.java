@@ -3,6 +3,9 @@ package project1;
 import java.io.IOException;
 import java.net.ServerSocket;
 
+/**
+ * Server class that handles multiple threads.
+ */
 public class ServerS {
 
     private static final int PORT_NUMBER = 80;
@@ -20,6 +23,7 @@ public class ServerS {
         }
     }
 
+    @Override
     protected void finalize() throws IOException {
         serverSocket.close();
     }

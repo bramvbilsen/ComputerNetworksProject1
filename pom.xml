@@ -71,7 +71,7 @@
         </plugin>
         <plugin>
           <!-- Build an executable client JAR -->
-          <!-- <groupId>org.apache.maven.plugins</groupId>
+          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.1.0</version>
           <configuration>
@@ -82,9 +82,10 @@
                 <mainClass>project1.ClientS</mainClass>
               </manifest>
             </archive>
-          </configuration> -->
+          </configuration>
+
           <!-- Build an executable server JAR -->
-          <groupId>org.apache.maven.plugins</groupId>
+          <!-- <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.1.0</version>
           <configuration>
@@ -95,7 +96,7 @@
                 <mainClass>project1.ServerS</mainClass>
               </manifest>
             </archive>
-          </configuration>
+          </configuration> -->
         </plugin>
       </plugins>
     </pluginManagement>

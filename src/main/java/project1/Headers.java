@@ -5,18 +5,40 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Enum to store types of request such as GET, PUT...
+ */
 enum RequestTypes {
     GET, HEAD, PUT, POST
 }
 
+/**
+ * Class to read and manage headers from a HTTP request.
+ */
 class Headers {
 
+    /**
+     * Raw string of read in headers.
+     */
     private String headers;
 
+    /**
+     * Reads headers via inputStream and stores them.
+     * 
+     * @param inputStream Stream to read the headers from.
+     * @throws IOException if an I/O error occurs.
+     */
     Headers(InputStream inputStream) throws IOException {
         this.headers = this.readHeadersFromInputStream(inputStream);
     }
 
+    /**
+     * Reads the headers from the inputstream and stores them as a string.
+     * 
+     * @param inputStream stream
+     * @param inputStream Stream to read the headers from.
+     * @throws IOException if an I/O error occurs.
+     */
     private String readHeadersFromInputStream(InputStream inputStream) throws IOException {
 
         String headersString = "";
@@ -37,13 +59,13 @@ class Headers {
             }
 
             headersString += currentChar;
-            System.out.print(currentChar);
         }
-
+        System.out.println(headersString);
         return headersString;
     }
 
     /**
+     * Gets the content type stored in the headers
      * 
      * @return the content type. If none found in headers, return UNKOWN.
      */
@@ -71,6 +93,7 @@ class Headers {
     }
 
     /**
+     * Gets the content length stored in the headers.
      * 
      * @return the content length if found in headers. If not, we assume chunked
      *         body and return -1.
@@ -89,9 +112,10 @@ class Headers {
     }
 
     /**
-     * Only server side.
+     * !!!Only server side!!! Gets the request type for a request received by the
+     * server.
      * 
-     * @return
+     * @return the request type.
      */
     public RequestTypes getRequestType() {
         if (this.headers.startsWith("GET")) {
@@ -107,9 +131,10 @@ class Headers {
     }
 
     /**
-     * Only server side.
+     * !!!Only server side!!! Gets the domain path from a request received by the
+     * server.
      * 
-     * @return
+     * @return the domain path
      */
     public String getDomainPath() {
         String firstHeaderLine = this.headers.substring(0, this.headers.indexOf('\r'));
@@ -117,6 +142,12 @@ class Headers {
         return pathStartCut.substring(0, pathStartCut.indexOf(" ")).trim();
     }
 
+    /**
+     * Returns whether or not the connection should be closed after handling the
+     * request from these headers.
+     * 
+     * @return true if connection should be closed, otherwise false.
+     */
     public boolean connectionShouldClose() {
         return this.headers.indexOf("Connection: close") != -1;
     }

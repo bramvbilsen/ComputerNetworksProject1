@@ -3,8 +3,17 @@ package project1;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Class to help finding embedded objects in HTML files.
+ */
 class EmbeddedObjectFinder {
 
+    /**
+     * Searches the first two "-marks and returns what is between them.
+     * 
+     * @param str String in which to search.
+     * @return String between first two "-marks.
+     */
     private static String combineCharsBetweenNextQuotes(String str) {
         String combined = "";
 
@@ -24,10 +33,17 @@ class EmbeddedObjectFinder {
         return combined;
     }
 
-    public static List<String> findEmbeddedObjects(String html1) {
-        String imgHTML = html1;
-        String stylesHTML = html1;
-        String scriptsHTML = html1;
+    /**
+     * Finds the embedded objects in the provided html string and returns a list of
+     * their link pointing to where they are stored.
+     * 
+     * @param html html string to find the embedded object links in.
+     * @return list of links of the embedded objects.
+     */
+    public static List<String> findEmbeddedObjects(String html) {
+        String imgHTML = html;
+        String stylesHTML = html;
+        String scriptsHTML = html;
         List<String> links = new ArrayList<>();
         int embeddedObjectIndex;
         while ((embeddedObjectIndex = imgHTML.indexOf("<img ")) != -1) {
