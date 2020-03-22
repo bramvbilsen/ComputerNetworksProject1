@@ -12,6 +12,7 @@ public class ServerS extends Thread {
     private String publicPath = "responseWebPage";
 
     public static void main(String[] args) throws IOException {
+        System.out.println("Server running, waiting for requests...");
         (new ServerS(80)).start();
     }
 
@@ -58,7 +59,6 @@ public class ServerS extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

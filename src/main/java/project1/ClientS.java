@@ -19,7 +19,64 @@ public class ClientS {
 
     public int port;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws URISyntaxException, UnknownHostException, IOException {
+
+        if (args.length == 4 || args.length == 5) {
+            String requestType = args[0].toUpperCase();
+            String uri = args[1];
+            if (uri.startsWith("https")) {
+                System.out.println("Unsupported protocol!");
+                return;
+            }
+            int port;
+            try {
+                port = Integer.parseInt(args[2]);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port!");
+                return;
+            }
+            String language = args[3].toLowerCase();
+            String data = "";
+            boolean hasData = args.length == 5;
+            if (hasData) {
+                data = args[4];
+            }
+
+            ClientS client = new ClientS(port);
+
+            String domain = client.getDomain(uri);
+            String path = client.getPath(uri);
+
+            System.out.println("Request to " + requestType.toString() + ".\nDomain: " + domain + "\nPath: " + path);
+
+            switch (requestType) {
+                case "GET":
+                    client.get(domain, path);
+                    break;
+                case "HEAD":
+                    client.head(domain, path);
+                    break;
+                case "POST":
+                    if (hasData) {
+                        client.post(domain, path, data);
+                    } else {
+                        System.out.println("Post requests should have data!");
+                    }
+                    break;
+                case "PUT":
+                    if (data != null) {
+                        client.put(domain, path, data);
+                    } else {
+                        System.out.println("Post requests should have data!");
+                    }
+                    break;
+                default:
+                    System.out.println("Request type not supported!");
+            }
+        } else {
+            System.out.println("Invalid arguments!");
+        }
+
         // String domain = "www.google.com";
         // String domain = "babytree.com";
         // String domain = "diptera.myspecies.info";
@@ -27,15 +84,14 @@ public class ClientS {
         // String domain = "toledo.kuleuven.be";
         // String domain = "techofires.com";
         // String domain = "httpbin.org";
-        String domain = "localhost";
+        // String domain = "localhost";
 
-        ClientS client = new ClientS(80);
-        // client.head();
-        try {
-            client.get(domain);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // // client.head();
+        // try {
+        // client.get(domain);
+        // } catch (IOException e) {
+        // e.printStackTrace();
+        // }
         // try {
         // client.post(domain, "/test2.txt", "Oef");
         // } catch (IOException e) {
@@ -43,31 +99,23 @@ public class ClientS {
         // }
     }
 
-    public void execute(String input) throws UnknownHostException, IOException {
-        String[] splittedInput = input.split(" ");
-        if (splittedInput.length == 4 || splittedInput.length == 5) {
-            String command = splittedInput[0];
-            String uri = splittedInput[1];
-            this.port = Integer.parseInt(splittedInput[2]);
-            String language = splittedInput[3];
-            String output = "";
-            if (splittedInput.length == 5) {
-                output = splittedInput[4];
-            }
-            switch (command) {
-                case "GET":
-                    this.get(uri);
-                    break;
-                case "HEAD":
-                    this.head(uri);
-                    break;
-                case "POST":
-                    this.post(uri, "/", output);
-                    break;
-                case "PUT":
-                    this.put(uri, "/", output);
-                    break;
-            }
+    public String getDomain(String uri) {
+        String domain = uri;
+        if (uri.startsWith("http://")) {
+            domain = domain.substring(domain.indexOf("http://") + "http://".length());
+        }
+        return domain.substring(0, domain.indexOf("/") == -1 ? domain.length() : domain.indexOf("/"));
+    }
+
+    public String getPath(String uri) {
+        String path = uri;
+        if (uri.startsWith("http://")) {
+            path = path.substring(path.indexOf("http://") + "http://".length());
+        }
+        if (path.indexOf("/") != -1) {
+            return path.substring(path.indexOf("/"), path.length());
+        } else {
+            return "/";
         }
     }
 
@@ -241,9 +289,13 @@ public class ClientS {
     private void handleFileBody(String path, InputStream inputStream, int contentLength) throws IOException {
         String fileName = this.outputPath + path;
         (new File(fileName)).getParentFile().mkdirs();
+        boolean didUpdate = true;
         while (inputStream.available() != contentLength) {
-            System.out.println("Downloading image:  "
-                    + Math.round((((double) inputStream.available()) / ((double) contentLength)) * 100) + "%");
+            long percentage = Math.round((((double) inputStream.available()) / ((double) contentLength)) * 100);
+            if (didUpdate) {
+                System.out.println("Downloading file:  " + percentage + "%");
+            }
+            didUpdate = percentage != Math.round((((double) inputStream.available()) / ((double) contentLength)) * 100);
         }
         System.out.println("Download completed!");
         FileOutputStream out = new FileOutputStream(fileName);
@@ -307,10 +359,10 @@ public class ClientS {
         }
     }
 
-    private void handleGeneralHead(String domain, boolean shouldClose, Socket client) throws IOException {
+    private void handleGeneralHead(String domain, String path, boolean shouldClose, Socket client) throws IOException {
         PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
 
-        writer.println("HEAD / HTTP/1.1");
+        writer.println("HEAD " + path + " HTTP/1.1");
         writer.println("Host: " + domain);
         writer.println("User-Agent: Computer Networks Client");
         if (shouldClose) {
@@ -324,9 +376,13 @@ public class ClientS {
     }
 
     public void head(String domain) throws UnknownHostException, IOException {
+        this.head(domain, "/");
+    }
+
+    public void head(String domain, String path) throws UnknownHostException, IOException {
         System.out.println("Connecting to " + domain + " on port " + port);
         Socket client = new Socket(domain, port);
-        this.handleGeneralHead(domain, true, client);
+        this.handleGeneralHead(domain, path, true, client);
         client.close();
     }
 
@@ -338,7 +394,7 @@ public class ClientS {
         System.out.println("Connecting to " + domain + " on port " + port);
         Socket client = new Socket(domain, port);
         this.handleGeneralGet(domain, path, client);
-        this.handleGeneralHead(domain, true, client);
+        this.handleGeneralHead(domain, path, true, client);
         client.close();
     }
 
