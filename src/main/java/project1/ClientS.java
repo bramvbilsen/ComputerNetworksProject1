@@ -25,9 +25,9 @@ public class ClientS {
         // String domain = "diptera.myspecies.info";
         // String domain = "www.bizrate.com";
         // String domain = "toledo.kuleuven.be";
-        String domain = "www.theplantlist.org";
+        // String domain = "techofires.com";
         // String domain = "httpbin.org";
-        // String domain = "localhost";
+        String domain = "localhost";
 
         ClientS client = new ClientS(80);
         // client.head();
@@ -191,6 +191,39 @@ public class ClientS {
             this.handleGeneralGet(imgDomains.get(i), imgPaths.get(i), client);
         }
 
+        ArrayList<String> styleDomains = new ArrayList<>();
+        ArrayList<String> stylePaths = new ArrayList<>();
+        for (String url : StylesFinder.findStylesTagSources(html)) {
+            String styleDomain;
+            String stylePath;
+            if (url.startsWith("//")) {
+                styleDomain = url.substring(2, url.length());
+                int domainPathSeperatorIndex = styleDomain.indexOf("/");
+                stylePath = styleDomain.substring(domainPathSeperatorIndex, styleDomain.length());
+                styleDomain = styleDomain.substring(0, domainPathSeperatorIndex);
+            } else if (url.startsWith("/")) {
+                styleDomain = domain;
+                stylePath = url;
+            } else if (url.startsWith("http://")) {
+                styleDomain = url.substring("http://".length(), url.length());
+                int domainPathSeperatorIndex = styleDomain.indexOf("/");
+                stylePath = styleDomain.substring(domainPathSeperatorIndex, styleDomain.length());
+                styleDomain = styleDomain.substring(0, domainPathSeperatorIndex);
+            } else if (url.startsWith("https://")) {
+                continue;
+            } else {
+                styleDomain = domain;
+                stylePath = "/" + url;
+            }
+            styleDomains.add(styleDomain);
+            stylePaths.add(stylePath);
+            System.out.println("Script path: " + stylePath);
+            html = html.replace(url, stylePath.substring(1));
+        }
+        for (int i = 0; i < styleDomains.size(); i++) {
+            this.handleGeneralGet(styleDomains.get(i), stylePaths.get(i), client);
+        }
+
         // Chunks the html in sizable parts to translate.
         List<String> smallHtmlParts = HTMLChunker.chunkHTML(html, 8000);
 
@@ -205,7 +238,7 @@ public class ClientS {
         this.writeToHTMLFile(html, path);
     }
 
-    private void handleImageBody(String path, InputStream inputStream, int contentLength) throws IOException {
+    private void handleFileBody(String path, InputStream inputStream, int contentLength) throws IOException {
         String fileName = this.outputPath + path;
         (new File(fileName)).getParentFile().mkdirs();
         while (inputStream.available() != contentLength) {
@@ -269,8 +302,8 @@ public class ClientS {
 
         if (contentType == ContentTypes.HTML) {
             this.handleHTMLBody(domain, path, client, contentLength);
-        } else if (contentType == ContentTypes.IMAGE) {
-            this.handleImageBody(path, inputStream, contentLength);
+        } else if (contentType == ContentTypes.IMAGE || contentType == ContentTypes.SCRIPT) {
+            this.handleFileBody(path, inputStream, contentLength);
         }
     }
 

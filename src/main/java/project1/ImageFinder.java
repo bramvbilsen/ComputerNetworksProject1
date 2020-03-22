@@ -30,11 +30,14 @@ class ImageFinder {
         while ((currentHtmlTagIndex = html.indexOf("<img ")) != -1) {
             html = html.substring(currentHtmlTagIndex + "<img ".length(), html.length());
             int nextSrcIndex = html.indexOf("src");
-            String potentialLink = ImageFinder
-                    .combineCharsBetweenNextQuotes(html.substring(nextSrcIndex, html.length()));
-            if (potentialLink.toLowerCase().endsWith(".png") || potentialLink.toLowerCase().endsWith(".jpg")
-                    || potentialLink.toLowerCase().endsWith(".jpeg") || potentialLink.toLowerCase().endsWith(".gif"))
-                links.add(ImageFinder.combineCharsBetweenNextQuotes(html.substring(nextSrcIndex, html.length())));
+            if (nextSrcIndex != -1) {
+                String potentialLink = ImageFinder
+                        .combineCharsBetweenNextQuotes(html.substring(nextSrcIndex, html.length()));
+                if (potentialLink.toLowerCase().endsWith(".png") || potentialLink.toLowerCase().endsWith(".jpg")
+                        || potentialLink.toLowerCase().endsWith(".jpeg")
+                        || potentialLink.toLowerCase().endsWith(".gif"))
+                    links.add(ImageFinder.combineCharsBetweenNextQuotes(html.substring(nextSrcIndex, html.length())));
+            }
         }
         return links;
     }

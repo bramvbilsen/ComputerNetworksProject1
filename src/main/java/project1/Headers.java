@@ -60,6 +60,8 @@ class Headers {
                 return ContentTypes.IMAGE;
             } else if (contentTypeCut.contains("plain")) {
                 return ContentTypes.PLAIN_TEXT;
+            } else if (contentTypeCut.contains("javascript")) {
+                return ContentTypes.SCRIPT;
             }
         }
         return ContentTypes.UNKOWN;

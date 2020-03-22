@@ -3,7 +3,7 @@ package project1;
 import java.util.ArrayList;
 import java.util.List;
 
-class ScriptFinder {
+class StylesFinder {
 
     private static String combineCharsBetweenNextQuotes(String str) {
         String combined = "";
@@ -24,16 +24,16 @@ class ScriptFinder {
         return combined;
     }
 
-    public static List<String> findJSTagSources(String html) {
+    public static List<String> findStylesTagSources(String html) {
         List<String> links = new ArrayList<>();
         int currentHtmlTagIndex;
-        while ((currentHtmlTagIndex = html.indexOf("<script ")) != -1) {
-            html = html.substring(currentHtmlTagIndex + "<script ".length(), html.length());
-            int nextSrcIndex = html.indexOf("src");
+        while ((currentHtmlTagIndex = html.indexOf("rel=\"stylesheet\"")) != -1) {
+            html = html.substring(currentHtmlTagIndex + "rel=\"stylesheet\"".length(), html.length());
+            int nextSrcIndex = html.indexOf("href");
             if (nextSrcIndex != -1) {
-                String potentialLink = ScriptFinder
+                String potentialLink = StylesFinder
                         .combineCharsBetweenNextQuotes(html.substring(nextSrcIndex, html.length()));
-                if (potentialLink.endsWith(".js")) {
+                if (potentialLink.endsWith(".css")) {
                     links.add(potentialLink);
                 }
             }
