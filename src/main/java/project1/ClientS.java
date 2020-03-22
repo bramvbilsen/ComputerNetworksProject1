@@ -52,8 +52,6 @@ public class ClientS {
             String domain = client.getDomain(uri);
             String path = client.getPath(uri);
 
-            System.out.println("Request to " + requestType.toString() + ".\nDomain: " + domain + "\nPath: " + path);
-
             switch (requestType) {
                 case "GET":
                     client.get(domain, path, language);
@@ -69,7 +67,7 @@ public class ClientS {
                     }
                     break;
                 case "PUT":
-                    if (data != null) {
+                    if (hasData) {
                         client.put(domain, path, data, language);
                     } else {
                         System.out.println("Post requests should have data!");
@@ -81,28 +79,6 @@ public class ClientS {
         } else {
             System.out.println("Invalid arguments!");
         }
-
-        // String domain = "www.google.com";
-        // String domain = "babytree.com";
-        // String domain = "www.bizrate.com";
-        // String domain = "toledo.kuleuven.be";
-        // String domain = "httpbin.org";
-        // String domain = "localhost";
-
-        // ClientS client = new ClientS(80, domain);
-        // String path = client.getPath(domain);
-
-        // client.head();
-        // try {
-        // client.get(domain, path, "en");
-        // } catch (IOException e) {
-        // e.printStackTrace();
-        // }
-        // try {
-        // client.post(domain, "/test2.txt", "Oef", "en");
-        // } catch (IOException e) {
-        // e.printStackTrace();
-        // }
     }
 
     /**

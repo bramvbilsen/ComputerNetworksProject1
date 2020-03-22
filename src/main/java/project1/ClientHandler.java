@@ -34,6 +34,10 @@ class ClientHandler implements Runnable {
             do {
                 headers = new Headers(inputStream);
                 RequestTypes requestType = headers.getRequestType();
+                if (requestType == null) {
+                    clientSocket.close();
+                    return;
+                }
                 switch (requestType) {
                     case GET:
                         this.get(headers, outputStream);
@@ -139,6 +143,13 @@ class ClientHandler implements Runnable {
         return false;
     }
 
+    /**
+     * Handles an error while writing file and notifies client.
+     * 
+     * @param writer       writer to communicate with the client.
+     * @param outputStream outputstream to communicate with the client.
+     * @throws IOException
+     */
     private void handleFileWriteError(PrintWriter writer, OutputStream outputStream) throws IOException {
         writer.println("HTTP/1.1 500 Internal Server Error");
         String html = "<!DOCTYPE html><html><h1>500: Internal server error.</h1></html>";
