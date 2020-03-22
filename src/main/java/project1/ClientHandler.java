@@ -58,6 +58,10 @@ class ClientHandler implements Runnable {
             return "Content-Type: image/png";
         } else if (path.endsWith(".txt")) {
             return "Content-Type: text/plain; charset=UTF-8";
+        } else if (path.endsWith(".js")) {
+            return "Content-Type: text/javascript; charset=UTF-8";
+        } else if (path.endsWith(".css")) {
+            return "Content-Type: text/css; charset=UTF-8";
         }
         throw new Exception("File type not supported");
     }
