@@ -1,40 +1,52 @@
+package project1;
+
 import java.lang.Runnable;
 import java.net.Socket;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Scanner;
 
 class ClientHandler implements Runnable {
     private Socket clientSocket;
+    private String publicPath = "responseWebPage";
 
     ClientHandler(Socket clientSocket) {
         this.clientSocket = clientSocket;
     }
 
     public void run() {
-        InputStream inputStream = socket.getInputStream();
-        OutputStream outputStream = socket.getOutputStream();
+        try {
+            InputStream inputStream = clientSocket.getInputStream();
+            OutputStream outputStream = clientSocket.getOutputStream();
 
-        Headers headers;
-        do {
-            headers = new Headers(inputStream);
-            RequestTypes requestType = headers.getRequestType();
-            switch (requestType) {
-                case GET:
-                    this.get(headers, outputStream);
-                    break;
-                case HEAD:
-                    this.head(headers, outputStream);
-                    break;
-                case POST:
-                    this.post(headers, inputStream, outputStream);
-                    break;
-                case PUT:
-                    this.put(headers, inputStream, outputStream);
-                    break;
-                default:
-                    break;
-            }
-        } while (!headers.connectionShouldClose());
-        socket.close();
+            Headers headers;
+            do {
+                headers = new Headers(inputStream);
+                RequestTypes requestType = headers.getRequestType();
+                switch (requestType) {
+                    case GET:
+                        this.get(headers, outputStream);
+                        break;
+                    case HEAD:
+                        this.head(headers, outputStream);
+                        break;
+                    case POST:
+                        this.post(headers, inputStream, outputStream);
+                        break;
+                    case PUT:
+                        this.put(headers, inputStream, outputStream);
+                        break;
+                    default:
+                        break;
+                }
+            } while (!headers.connectionShouldClose());
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private String contentTypeFromPath(String path) throws Exception {
