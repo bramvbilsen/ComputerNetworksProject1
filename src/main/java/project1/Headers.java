@@ -15,6 +15,7 @@ class Headers {
 
     Headers(InputStream inputStream) throws IOException {
         this.headers = this.readHeadersFromInputStream(inputStream);
+        System.out.println(this.getContentLength());
     }
 
     private String readHeadersFromInputStream(InputStream inputStream) throws IOException {
@@ -37,8 +38,9 @@ class Headers {
             }
 
             headersString += currentChar;
-            System.out.print(currentChar);
+            // System.out.print(currentChar);
         }
+
         return headersString;
     }
 
@@ -116,5 +118,10 @@ class Headers {
 
     public boolean connectionShouldClose() {
         return this.headers.indexOf("Connection: close") != -1;
+    }
+
+    @Override
+    public String toString() {
+        return this.headers;
     }
 }

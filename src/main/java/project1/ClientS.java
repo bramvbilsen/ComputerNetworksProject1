@@ -13,11 +13,13 @@ public class ClientS {
 
     final String outputPath = "output";
 
-    public ClientS(int port) {
+    public ClientS(int port, String uri) {
         this.port = port;
+        this.uri = uri;
     }
 
     public int port;
+    public String uri;
 
     public static void main(String[] args) throws URISyntaxException, UnknownHostException, IOException {
 
@@ -42,7 +44,7 @@ public class ClientS {
                 data = args[4];
             }
 
-            ClientS client = new ClientS(port);
+            ClientS client = new ClientS(port, uri);
 
             String domain = client.getDomain(uri);
             String path = client.getPath(uri);
@@ -51,21 +53,21 @@ public class ClientS {
 
             switch (requestType) {
                 case "GET":
-                    client.get(domain, path);
+                    client.get(domain, path, language);
                     break;
                 case "HEAD":
                     client.head(domain, path);
                     break;
                 case "POST":
                     if (hasData) {
-                        client.post(domain, path, data);
+                        client.post(domain, path, data, language);
                     } else {
                         System.out.println("Post requests should have data!");
                     }
                     break;
                 case "PUT":
                     if (data != null) {
-                        client.put(domain, path, data);
+                        client.put(domain, path, data, language);
                     } else {
                         System.out.println("Post requests should have data!");
                     }
@@ -194,7 +196,8 @@ public class ClientS {
         }
     }
 
-    private void handleHTMLBody(String domain, String path, Socket client, int contentLength) throws IOException {
+    private void handleHTMLBody(String domain, String path, Socket client, int contentLength, String language)
+            throws IOException {
         String html;
 
         InputStream inputStream = client.getInputStream();
@@ -205,6 +208,8 @@ public class ClientS {
             System.out.println("Normal body");
             html = this.handleContentLengthHTMLBody(inputStream, contentLength);
         }
+
+        System.out.println("\n\n\nHTML READ, SCANNING FOR EMBEDDED OBJECTS");
 
         ArrayList<String> imgDomains = new ArrayList<>();
         ArrayList<String> imgPaths = new ArrayList<>();
@@ -236,7 +241,13 @@ public class ClientS {
             html = html.replace(url, imgPath.substring(1));
         }
         for (int i = 0; i < imgDomains.size(); i++) {
-            this.handleGeneralGet(imgDomains.get(i), imgPaths.get(i), client);
+            if (imgDomains.get(i) != this.getDomain(this.uri)) {
+                System.out.println("File on other server, setting up connection...");
+                this.get(imgDomains.get(i), imgPaths.get(i), language);
+            } else {
+                System.out.println("Can re-use connection!");
+                this.handleGeneralGet(imgDomains.get(i), imgPaths.get(i), client, language);
+            }
         }
 
         ArrayList<String> styleDomains = new ArrayList<>();
@@ -269,7 +280,11 @@ public class ClientS {
             html = html.replace(url, stylePath.substring(1));
         }
         for (int i = 0; i < styleDomains.size(); i++) {
-            this.handleGeneralGet(styleDomains.get(i), stylePaths.get(i), client);
+            if (styleDomains.get(i) != this.getDomain(this.uri)) {
+                this.get(styleDomains.get(i), stylePaths.get(i), language);
+            } else {
+                this.handleGeneralGet(styleDomains.get(i), stylePaths.get(i), client, language);
+            }
         }
 
         // Chunks the html in sizable parts to translate.
@@ -279,32 +294,49 @@ public class ClientS {
         // String originalLan = Translator.fromLanguage(html);
         // String translatedHtml = "";
         // for (String htmlPart : smallHtmlParts) {
-        // translatedHtml += Translator.translateHTML(htmlPart, originalLan, "ru");
+        // translatedHtml += Translator.translateHTML(htmlPart, originalLan, language);
         // }
         // this.writeToHTMLFile(translatedHtml);
         // \\
         this.writeToHTMLFile(html, path);
     }
 
-    private void handleFileBody(String path, InputStream inputStream, int contentLength) throws IOException {
+    private void handleFileBody(String path, Socket client, int contentLength) throws IOException {
+        InputStream inputStream = client.getInputStream();
+        // inputStream.
         String fileName = this.outputPath + path;
         (new File(fileName)).getParentFile().mkdirs();
         boolean didUpdate = true;
-        while (inputStream.available() != contentLength) {
-            long percentage = Math.round((((double) inputStream.available()) / ((double) contentLength)) * 100);
-            if (didUpdate) {
-                System.out.println("Downloading file:  " + percentage + "%");
-            }
-            didUpdate = percentage != Math.round((((double) inputStream.available()) / ((double) contentLength)) * 100);
-        }
-        System.out.println("Download completed!");
+        long lastUpdateTime = System.currentTimeMillis();
+        // while (inputStream.available() != contentLength || inputStream.read(b)) {
+        // long percentage = Math.round((((double) inputStream.available()) / ((double)
+        // contentLength)) * 100);
+        // if (didUpdate) {
+        // lastUpdateTime = System.currentTimeMillis();
+        // System.out.println("Downloading file: " + percentage + "%");
+        // }
+        // if (System.currentTimeMillis() - lastUpdateTime > 1000 * 10) {
+        // this.handleGeneralHead(this.getDomain(this.uri), path, false, client);
+        // System.out.println("PATH: " + path);
+        // System.out.println("END OF WAKE UP CALL");
+        // }
+        // didUpdate = percentage != Math.round((((double) inputStream.available()) /
+        // ((double) contentLength)) * 100);
+        // }
+        // System.out.println("Download completed!");
         FileOutputStream out = new FileOutputStream(fileName);
         byte[] buffer = new byte[contentLength];
+
+        int test;
+        while ((test = inputStream.read()) != -1) {
+            out.write((byte) test);
+        }
         out.write(buffer, 0, inputStream.read(buffer));
         out.close();
     }
 
-    private void handlePutAndPost(String domain, String path, PutPost type, String input) throws IOException {
+    private void handlePutAndPost(String domain, String path, PutPost type, String input, String language)
+            throws IOException {
         System.out.println("Connecting to " + domain + " on port " + port);
         Socket client = new Socket(domain, port);
 
@@ -326,7 +358,7 @@ public class ClientS {
         int contentLength = headers.getContentLength();
 
         if (responseContentType == ContentTypes.HTML) {
-            this.handleHTMLBody(domain, path, client, contentLength);
+            this.handleHTMLBody(domain, path, client, contentLength, language);
         }
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
@@ -337,7 +369,8 @@ public class ClientS {
         client.close();
     }
 
-    private void handleGeneralGet(String domain, String path, Socket client) throws UnknownHostException, IOException {
+    private void handleGeneralGet(String domain, String path, Socket client, String language)
+            throws UnknownHostException, IOException {
         PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
 
         writer.println("GET " + path + " HTTP/1.1");
@@ -353,9 +386,11 @@ public class ClientS {
         int contentLength = headers.getContentLength();
 
         if (contentType == ContentTypes.HTML) {
-            this.handleHTMLBody(domain, path, client, contentLength);
+            this.handleHTMLBody(domain, path, client, contentLength, language);
         } else if (contentType == ContentTypes.IMAGE || contentType == ContentTypes.SCRIPT) {
-            this.handleFileBody(path, inputStream, contentLength);
+            System.out.println("--------- Image headers: ");
+            System.out.println(headers.toString());
+            this.handleFileBody(path, client, contentLength);
         }
     }
 
@@ -386,24 +421,26 @@ public class ClientS {
         client.close();
     }
 
-    public void get(String domain) throws UnknownHostException, IOException {
-        this.get(domain, "/");
+    public void get(String domain, String language) throws UnknownHostException, IOException {
+        this.get(domain, "/", language);
     }
 
-    public void get(String domain, String path) throws UnknownHostException, IOException {
+    public void get(String domain, String path, String language) throws UnknownHostException, IOException {
         System.out.println("Connecting to " + domain + " on port " + port);
         Socket client = new Socket(domain, port);
-        this.handleGeneralGet(domain, path, client);
+        this.handleGeneralGet(domain, path, client, language);
         this.handleGeneralHead(domain, path, true, client);
         client.close();
     }
 
-    public void put(String domain, String path, String input) throws UnknownHostException, IOException {
-        this.handlePutAndPost(domain, path, PutPost.PUT, input);
+    public void put(String domain, String path, String input, String language)
+            throws UnknownHostException, IOException {
+        this.handlePutAndPost(domain, path, PutPost.PUT, input, language);
     }
 
-    public void post(String domain, String path, String input) throws UnknownHostException, IOException {
-        this.handlePutAndPost(domain, path, PutPost.POST, input);
+    public void post(String domain, String path, String input, String language)
+            throws UnknownHostException, IOException {
+        this.handlePutAndPost(domain, path, PutPost.POST, input, language);
     }
 }
 
