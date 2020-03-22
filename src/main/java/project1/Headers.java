@@ -15,7 +15,6 @@ class Headers {
 
     Headers(InputStream inputStream) throws IOException {
         this.headers = this.readHeadersFromInputStream(inputStream);
-        System.out.println(this.getContentLength());
     }
 
     private String readHeadersFromInputStream(InputStream inputStream) throws IOException {
@@ -38,7 +37,7 @@ class Headers {
             }
 
             headersString += currentChar;
-            // System.out.print(currentChar);
+            System.out.print(currentChar);
         }
 
         return headersString;
@@ -64,6 +63,8 @@ class Headers {
                 return ContentTypes.PLAIN_TEXT;
             } else if (contentTypeCut.contains("javascript")) {
                 return ContentTypes.SCRIPT;
+            } else if (contentTypeCut.contains("css")) {
+                return ContentTypes.STYLES;
             }
         }
         return ContentTypes.UNKOWN;
